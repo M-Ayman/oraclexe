@@ -1,0 +1,9 @@
+- hosts: localhost
+  vars:
+    NodeEnv: ""
+  remote_user: ansible
+  become: true
+  gather_facts: yes
+  connection: local
+  roles:
+    - ansible-oraclexe

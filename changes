@@ -1,0 +1,122 @@
+diff --git a/tasks/main.yml b/tasks/main.yml
+index 7fc217e..4a94def 100644
+--- a/tasks/main.yml
++++ b/tasks/main.yml
+@@ -32,4 +32,4 @@
+   - lineinfile: dest=/u01/app/oracle/.bashrc line="source ~/.bash_profile" state=present
+ 
+   - include: oracle-xe-test.yml
+-    when: oracle-xe-test
++    #when: oracle-xe-test
+diff --git a/tasks/oracle-xe-configure.yml b/tasks/oracle-xe-configure.yml
+index 9e10fc3..c21ee49 100644
+--- a/tasks/oracle-xe-configure.yml
++++ b/tasks/oracle-xe-configure.yml
+@@ -12,9 +12,12 @@
+ 
+   - name: remove previous configuration
+     file: path=/etc/sysconfig/oracle-xe state=absent
+-
++  
++  - name: Change the owner of oracle-xe.log to user ansible
++    file: path=/tmp/oracle-xe.log state=file owner=ansible group=ansible
+   - name: configure oracle-xe
+     shell: /etc/init.d/oracle-xe configure < /tmp/oracle-xe.conf >> /tmp/oracle-xe.log
++    ignore_errors: yes
+ 
+   - shell: firewall-cmd --permanent --add-port=1521/tcp
+     when: (not docker or docker == 'no') and ansible_os_family == "RedHat"
+diff --git a/tasks/oracle-xe-install-debian.yml b/tasks/oracle-xe-install-debian.yml
+index 71a3683..c5c0a02 100644
+--- a/tasks/oracle-xe-install-debian.yml
++++ b/tasks/oracle-xe-install-debian.yml
+@@ -1,7 +1,7 @@
+ ---
+ 
+   - template: src=apt.conf dest=/etc/apt/apt.conf mode=644
+-    when: proxy
++   # when: proxy
+ 
+   - stat: path=/tmp/oracle-xe_11.2.0-2_amd64.deb
+     register: deb
+diff --git a/tasks/oracle-xe-test.yml b/tasks/oracle-xe-test.yml
+index c86d477..b811b10 100644
+--- a/tasks/oracle-xe-test.yml
++++ b/tasks/oracle-xe-test.yml
+@@ -1,25 +1,20 @@
+ ---
+ 
+-  - file: path=/tmp/test state=directory owner=oracle group=dba
++- name: ensure test dir exist
++  file: path=/tmp/test state=directory owner=oracle group=dba
+ 
+-  - name: install required packages for Debian tests
+-    apt: name={{item}} state=present
+-    with_items:
+-      - sudo
+-    when: ansible_os_family == "Debian"
++- name: install required packages for RedHat tests
++  yum: name={{item}} disable_gpg_check=yes state=present
++  environment: proxy_env
++  with_items:
++    - sudo
++  when: proxy and ansible_os_family == "RedHat"
+ 
+-  - name: install required packages for RedHat tests
+-    yum: name={{item}} disable_gpg_check=yes state=present
+-    environment: proxy_env
+-    with_items:
+-      - sudo
+-    when: proxy and ansible_os_family == "RedHat"
+-
+-  - name: install required packages for RedHat tests
+-    yum: name={{item}} disable_gpg_check=yes state=present
+-    with_items:
+-      - sudo
+-    when: not proxy and ansible_os_family == "RedHat"
++- name: install required packages for RedHat tests
++  yum: name={{item}} disable_gpg_check=yes state=present
++  with_items:
++    - sudo
++  when: not proxy and ansible_os_family == "RedHat"
+ 
+ #  - name: install required packages for Suse tests
+ #    zypper: name={{item}} disable_gpg_check=yes state=present
+@@ -28,21 +23,21 @@
+ #      - sudo
+ #    when: ansible_os_family == "Suse"
+ 
+-  - lineinfile: dest=/etc/sudoers state=absent regexp='^Defaults(\s*)requiretty' validate='visudo -cf %s'
+-    when: ansible_distribution == 'CentOS'
++- lineinfile: dest=/etc/sudoers state=absent regexp='^Defaults(\s*)requiretty' validate='visudo -cf %s'
++  when: ansible_distribution == 'CentOS'
+ 
+   # Create test schema
+-  - name: copy TEST oracle sql scripts
+-    copy: src=test/sql dest=/tmp/test/ owner=oracle group=dba mode=0500
+-    register: test_sql_scripts
+-  - name: copy TEST oracle user sql script
+-    template: src=user.j2 dest=/tmp/test/sql/user.sql owner=oracle group=dba mode=0500
+-    register: test_user_sql_script
+-  - name: copy TEST oracle sh script
+-    template: src=oracle-test.j2 dest=/tmp/test/oracle.sh owner=oracle group=dba mode=0500
+-    register: test_schema_script
+-  - name: create TEST oracle schema
+-    shell: /tmp/test/oracle.sh chdir=/tmp/test
+-    sudo_user: oracle
+-    register: execute_test_schema_script
+-    when: test_sql_scripts|changed or test_user_sql_script|changed or test_schema_script|changed
++- name: copy TEST oracle sql scripts
++  copy: src=test/sql dest=/tmp/test/ owner=oracle group=dba mode=0500
++  register: test_sql_scripts
++- name: copy TEST oracle user sql script
++  template: src=user.j2 dest=/tmp/test/sql/user.sql owner=oracle group=dba mode=0500
++  register: test_user_sql_script
++- name: copy TEST oracle sh script
++  template: src=oracle-test.j2 dest=/tmp/test/oracle.sh owner=oracle group=dba mode=0500
++  register: test_schema_script
++- name: create TEST oracle schema
++  shell: sudo /tmp/test/oracle.sh chdir=/tmp/test
++  sudo_user: oracle
++  register: execute_test_schema_script
++  when: test_sql_scripts|changed or test_user_sql_script|changed or test_schema_script|changed

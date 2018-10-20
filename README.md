@@ -1,6 +1,48 @@
 ansible-oraclexe
 ================
 
+apt update ; apt upgrade ; reboot 
+
+## Install Ansible on Ubuntu 14.04
+
+ apt-get install software-properties-common
+
+ apt-add-repository ppa:ansible/ansible
+
+ apt-get update
+
+ apt-get install ansible
+
+## Add user with key 
+
+ adduser ansible
+ echo "ansible ALL=NOPASSWD: ALL"
+
+ sudo su - ansible 
+
+ ssh-keygen		//generate key withou password 
+
+ cp ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys
+
+ vim /etc/asnible/hosts
+	 [localhost]
+	 127.0.0.1
+
+
+## try ssh with key
+	 ssh ansible@localhost
+
+## Run ansible
+
+ git clone https://github.com/M-Ayman/oraclexe.git
+
+ cd oraclexe
+
+You need to download Oracle XE 11g release 2 from [oracle](http://www.oracle.com/technetwork/products/express-edition/downloads/index.html) and add oracle-xe-*.rpm under ./files directory.
+
+ ansible-playbook deploy.yml
+===========================
+
 #Ansible playbook for oracle-xe
 
 This is an [Ansible](http://www.ansibleworks.com/) playbook for [Oracle XE 11g](http://www.oracle.com/technetwork/products/express-edition/overview/index.html). You can use it by itself or as part of a larger playbook customized for your local environment.
